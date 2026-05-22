@@ -147,64 +147,37 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 def init_db():
     DB_FILE.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS pqrs (
-            RADICADO TEXT PRIMARY KEY,
-            CODIGO TEXT,
-            FECHA_ENVIO TEXT,
-            FECHA_PUBLICACION TEXT,
-            FECHA_LIMITE TEXT,
-            CANAL TEXT,
-            TIPO_PQRS TEXT,
-            SECRETARIA TEXT,
-            CONCEPTO_VERIFICACION TEXT,
-            NIVEL_CUMPLIMIENTO TEXT,
-            MES TEXT,
-            DIAS_GESTION REAL,
-            RESPONSABLE TEXT,
-            TEMA TEXT,
-            PRIORIDAD TEXT,
-            ESTADO TEXT,
-            OBSERVACION TEXT
-        )
-        """
-    )
-    existing = cur.execute("SELECT COUNT(*) FROM pqrs").fetchone()[0]
+
+    existing = 0
+    try:
+        existing = pd.read_sql_query("SELECT COUNT(*) as total FROM pqrs", conn)["total"][0]
+    except Exception:
+        existing = 0
+
     if existing == 0:
         df = pd.read_excel(DATA_FILE, sheet_name=0)
         df = normalize_columns(df)
+
         required = [
             "RADICADO", "CODIGO", "FECHA_ENVIO", "FECHA_PUBLICACION", "FECHA_LIMITE", "CANAL",
             "TIPO_PQRS", "SECRETARIA", "CONCEPTO_VERIFICACION", "NIVEL_CUMPLIMIENTO", "MES",
             "DIAS_GESTION", "RESPONSABLE", "TEMA", "PRIORIDAD", "ESTADO", "OBSERVACION"
         ]
+
         for col in required:
             if col not in df.columns:
-                df[col] = None
+                df[col] = ""
+
         df = df[required]
+
         for col in ["FECHA_ENVIO", "FECHA_PUBLICACION", "FECHA_LIMITE"]:
             df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
-df = df.where(pd.notnull(df), None)
 
-cur.executemany(
-    """
-    INSERT OR REPLACE INTO pqrs (
-        RADICADO, CODIGO, FECHA_ENVIO, FECHA_PUBLICACION, FECHA_LIMITE,
-        CANAL, TIPO_PQRS, SECRETARIA, CONCEPTO_VERIFICACION,
-        NIVEL_CUMPLIMIENTO, MES, DIAS_GESTION, RESPONSABLE, TEMA,
-        PRIORIDAD, ESTADO, OBSERVACION
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """,
-    df.values.tolist()
-)
+        df = df.fillna("")
+        df.to_sql("pqrs", conn, if_exists="replace", index=False)
 
-conn.commit()
-   
-conn.close()
-
+    conn.commit()
+    conn.close()
 
 def load_data() -> pd.DataFrame:
     conn = sqlite3.connect(DB_FILE)
