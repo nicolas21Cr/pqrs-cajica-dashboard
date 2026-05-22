@@ -186,7 +186,7 @@ def init_db():
         df = df[required]
         for col in ["FECHA_ENVIO", "FECHA_PUBLICACION", "FECHA_LIMITE"]:
             df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
-        df = df.where(pd.notnull(df), None)
+df = df.where(pd.notnull(df), None)
 
 cur.executemany(
     """
@@ -195,12 +195,15 @@ cur.executemany(
         CANAL, TIPO_PQRS, SECRETARIA, CONCEPTO_VERIFICACION,
         NIVEL_CUMPLIMIENTO, MES, DIAS_GESTION, RESPONSABLE, TEMA,
         PRIORIDAD, ESTADO, OBSERVACION
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
     df.values.tolist()
 )
-    conn.commit()
-    conn.close()
+
+conn.commit()
+   
+conn.close()
 
 
 def load_data() -> pd.DataFrame:
