@@ -186,7 +186,19 @@ def init_db():
         df = df[required]
         for col in ["FECHA_ENVIO", "FECHA_PUBLICACION", "FECHA_LIMITE"]:
             df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
-        df.to_sql("pqrs", conn, if_exists="append", index=False)
+        df = df.where(pd.notnull(df), None)
+
+cur.executemany(
+    """
+    INSERT OR REPLACE INTO pqrs (
+        RADICADO, CODIGO, FECHA_ENVIO, FECHA_PUBLICACION, FECHA_LIMITE,
+        CANAL, TIPO_PQRS, SECRETARIA, CONCEPTO_VERIFICACION,
+        NIVEL_CUMPLIMIENTO, MES, DIAS_GESTION, RESPONSABLE, TEMA,
+        PRIORIDAD, ESTADO, OBSERVACION
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+    df.values.tolist()
+)
     conn.commit()
     conn.close()
 
